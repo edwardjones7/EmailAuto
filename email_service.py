@@ -1,9 +1,12 @@
+import os
 import re
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from database import get_db
+
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 
 def clean_business_name(name: str) -> str:
@@ -70,7 +73,7 @@ def send_email(
     msg["To"] = to_email
 
     if tracking_id:
-        pixel = f'<img src="http://localhost:8000/track/open/{tracking_id}" width="1" height="1" style="display:none;" />'
+        pixel = f'<img src="{BASE_URL}/track/open/{tracking_id}" width="1" height="1" style="display:none;" />'
         body_html = body_html + pixel
 
     plain = re.sub(r"<[^>]+>", "", body_html)

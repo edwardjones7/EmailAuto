@@ -1,0 +1,9 @@
+leads.db
+.env
+__pycache__/
+*.pyc
+*.pyo
+.claude/
+*.egg-info/
+.venv/
+venv/

@@ -18,7 +18,8 @@ from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-DB_PATH = Path(__file__).parent / "leads.db"
+import os as _os
+DB_PATH = Path(_os.getenv("DATA_DIR", str(Path(__file__).parent))) / "leads.db"
 
 # Pages to check per site (in order)
 CONTACT_PATHS = ["/", "/contact", "/contact-us", "/about", "/about-us"]

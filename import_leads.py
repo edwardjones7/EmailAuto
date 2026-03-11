@@ -9,7 +9,9 @@ from pathlib import Path
 
 import openpyxl
 
-DB_PATH = Path(__file__).parent / "leads.db"
+import os
+_data_dir = os.getenv("DATA_DIR", str(Path(__file__).parent))
+DB_PATH = Path(_data_dir) / "leads.db"
 XLSX_PATH = Path(__file__).parent / "all_leads_master.xlsx"
 
 DEFAULT_TEMPLATE = {

@@ -1,4 +1,5 @@
 import base64
+import os
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -8,6 +9,8 @@ from fastapi.staticfiles import StaticFiles
 
 from database import get_db, init_db
 from routers import emails, leads, settings, templates
+
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 
 @asynccontextmanager
@@ -22,6 +25,12 @@ app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(emails.router, prefix="/api/emails", tags=["emails"])
 app.include_router(templates.router, prefix="/api/templates", tags=["templates"])
 app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+
+
+# Expose BASE_URL to frontend so tracking pixel uses the real domain
+@app.get("/api/config")
+async def get_config():
+    return {"base_url": BASE_URL}
 
 
 # 1x1 transparent PNG (base64)
@@ -57,4 +66,5 @@ app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
