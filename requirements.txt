@@ -3,4 +3,4 @@ uvicorn[standard]
 openpyxl
 requests
 beautifulsoup4
-anthropic
+google-genai

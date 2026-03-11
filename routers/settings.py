@@ -22,8 +22,8 @@ async def get_settings():
     result = {r["key"]: r["value"] for r in rows}
     if result.get("smtp_password"):
         result["smtp_password"] = MASKED
-    if result.get("anthropic_api_key"):
-        result["anthropic_api_key"] = MASKED
+    if result.get("gemini_api_key"):
+        result["gemini_api_key"] = MASKED
     return result
 
 
@@ -33,7 +33,7 @@ async def save_settings(data: SettingsPayload):
     with db:
         for key, value in data.settings.items():
             # Don't overwrite masked secrets
-            if value in (MASKED, "") and key in ("smtp_password", "anthropic_api_key"):
+            if value in (MASKED, "") and key in ("smtp_password", "gemini_api_key"):
                 continue
             db.execute(
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",

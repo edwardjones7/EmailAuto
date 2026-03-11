@@ -102,17 +102,19 @@ async def enhance_with_ai(req: EnhanceRequest):
         raise HTTPException(404, "Lead not found")
 
     settings = {r["key"]: r["value"] for r in settings_rows}
-    api_key = settings.get("anthropic_api_key")
+    api_key = settings.get("gemini_api_key")
     if not api_key:
-        raise HTTPException(400, "Anthropic API key not configured in Settings")
+        raise HTTPException(400, "Gemini API key not configured in Settings")
 
     lead = dict(lead)
     from email_service import clean_business_name
 
     try:
-        import anthropic
+        import json
+        from google import genai
 
-        client = anthropic.Anthropic(api_key=api_key)
+        client = genai.Client(api_key=api_key)
+
         prompt = f"""You are writing a cold outreach email for a web development agency targeting local small businesses.
 
 Lead info:
@@ -133,14 +135,14 @@ Preserve any HTML tags in the body.
 
 Return ONLY valid JSON: {{"subject": "...", "body": "..."}}"""
 
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=600,
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        import json
-        result = json.loads(message.content[0].text)
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        text = response.text.strip()
+        # Strip markdown code fences if present
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        result = json.loads(text.strip())
         return result
     except Exception as e:
         raise HTTPException(500, f"AI enhancement failed: {str(e)}")

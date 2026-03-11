@@ -771,13 +771,13 @@
             <div class="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-sm">✨</div>
             <div>
               <h3 class="font-semibold text-slate-800 text-sm">AI Personalization</h3>
-              <p class="text-xs text-slate-400">One-click email rewriting via Claude</p>
+              <p class="text-xs text-slate-400">One-click email rewriting via Gemini 2.0 Flash (free)</p>
             </div>
           </div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Anthropic API Key</label>
-          <input x-model="settings.anthropic_api_key" type="password" placeholder="sk-ant-..."
+          <label class="block text-xs font-medium text-slate-600 mb-1">Google Gemini API Key</label>
+          <input x-model="settings.gemini_api_key" type="password" placeholder="AIza..."
             class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition" />
-          <p class="text-xs text-slate-400 mt-2">Optional — used for the "Enhance with AI" button in the compose modal.</p>
+          <p class="text-xs text-slate-400 mt-2">Free at <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-500 hover:underline">aistudio.google.com/apikey</a> — 1,500 free requests/day.</p>
         </div>
 
         <div class="flex items-center gap-3">
@@ -1384,7 +1384,7 @@ function app() {
         smtp_host: 'mail.privateemail.com',
         smtp_port: '587',
         smtp_username: '', smtp_password: '', smtp_from_name: '',
-        anthropic_api_key: '',
+        gemini_api_key: '',
         ...d,
       };
     },
