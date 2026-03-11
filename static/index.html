@@ -311,6 +311,11 @@
             <span class="text-xs text-slate-400">
               <span class="font-semibold text-slate-600" x-text="leadsTotal.toLocaleString()"></span> leads
             </span>
+            <button @click="addLeadOpen = true"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Add Lead
+            </button>
             <button x-show="selected.length > 0" @click="openCompose()"
               class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
@@ -490,6 +495,11 @@
             <span class="text-xs text-slate-400">
               <span class="font-semibold text-slate-600" x-text="emailsTotal.toLocaleString()"></span> contacts
             </span>
+            <button @click="dedupEmails()"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              Remove Duplicates
+            </button>
             <button x-show="selected.length > 0" @click="openCompose()"
               class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
@@ -921,6 +931,86 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════ ADD LEAD MODAL ═══════════════════════════ -->
+<div x-show="addLeadOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+  @keydown.escape.window="addLeadOpen = false" @click.self="addLeadOpen = false">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" @click.stop>
+    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+      <h2 class="font-semibold text-slate-800">Add New Lead</h2>
+      <button @click="addLeadOpen = false" class="text-slate-400 hover:text-slate-600 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-5 space-y-3 overflow-y-auto">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="block text-xs font-medium text-slate-600 mb-1">Business Name <span class="text-red-400">*</span></label>
+          <input x-model="addLead.business_name" type="text" placeholder="Acme Plumbing"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs font-medium text-slate-600 mb-1">Email</label>
+          <input x-model="addLead.email" type="email" placeholder="owner@business.com"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">City</label>
+          <input x-model="addLead.city" type="text" placeholder="Austin"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">State</label>
+          <input x-model="addLead.state" type="text" placeholder="TX" maxlength="2"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Niche</label>
+          <input x-model="addLead.niche" type="text" placeholder="plumber"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Phone</label>
+          <input x-model="addLead.phone" type="text" placeholder="(512) 555-0100"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Website</label>
+          <input x-model="addLead.website" type="text" placeholder="https://..."
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Rating</label>
+          <input x-model="addLead.rating" type="number" min="1" max="5" step="0.1" placeholder="4.5"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Reviews</label>
+          <input x-model="addLead.reviews" type="number" min="0" placeholder="42"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs font-medium text-slate-600 mb-1">Website Issue</label>
+          <input x-model="addLead.website_issue" type="text" placeholder="No website listed"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs font-medium text-slate-600 mb-1">Notes</label>
+          <textarea x-model="addLead.notes" rows="2" placeholder="Any notes..."
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t border-slate-100 flex justify-end gap-2 flex-shrink-0">
+      <button @click="addLeadOpen = false" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition">Cancel</button>
+      <button @click="submitAddLead()" :disabled="!addLead.business_name.trim()"
+        class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-40">
+        Add Lead
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════════════════════════ LEAD DETAIL MODAL ═══════════════════════════ -->
 <div x-show="leadDetailOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
   class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -1126,6 +1216,10 @@ function app() {
     // Settings
     settings: {}, settingsSaving: false, settingsSaved: false,
     smtpTesting: false, smtpTestResult: null,
+
+    // Add lead
+    addLeadOpen: false,
+    addLead: { business_name: '', email: '', phone: '', website: '', niche: '', city: '', state: '', rating: '', reviews: '', website_issue: '', notes: '' },
 
     // Lead detail
     leadDetailOpen: false, leadDetail: null, leadDetailSaving: false,
@@ -1336,6 +1430,28 @@ function app() {
       await fetch(`/api/templates/${id}`, { method: 'DELETE' });
       await this.loadTemplates();
       this.showToast('Template deleted');
+    },
+
+    async submitAddLead() {
+      if (!this.addLead.business_name.trim()) return;
+      const payload = { ...this.addLead };
+      if (payload.rating) payload.rating = parseFloat(payload.rating);
+      if (payload.reviews) payload.reviews = parseInt(payload.reviews);
+      await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      this.addLeadOpen = false;
+      this.addLead = { business_name: '', email: '', phone: '', website: '', niche: '', city: '', state: '', rating: '', reviews: '', website_issue: '', notes: '' };
+      await this.loadLeads();
+      await this.loadStats();
+      if (payload.email) await this.loadEmails();
+    },
+
+    async dedupEmails() {
+      if (!confirm('Remove all duplicate email addresses, keeping the highest-priority lead for each email?')) return;
+      const res = await fetch('/api/leads/dedup', { method: 'DELETE' });
+      const data = await res.json();
+      alert(`Done — ${data.removed} duplicate${data.removed !== 1 ? 's' : ''} removed.`);
+      await this.loadEmails();
+      await this.loadStats();
     },
 
     // Emails tab

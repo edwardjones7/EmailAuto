@@ -132,6 +132,60 @@ class LeadUpdate(BaseModel):
     email: Optional[str] = None
 
 
+class LeadCreate(BaseModel):
+    business_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    niche: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    rating: Optional[float] = None
+    reviews: Optional[int] = None
+    website_issue: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.post("")
+async def create_lead(data: LeadCreate):
+    db = get_db()
+    clean = data.business_name.strip()
+    # Remove common suffixes for clean name
+    import re
+    clean = re.sub(r"\b(LLC|Inc\.?|Corp\.?|Co\.?|Ltd\.?)\b", "", clean, flags=re.IGNORECASE).strip(" ,.")
+    with db:
+        cur = db.execute(
+            """INSERT INTO leads
+               (business_name, business_name_clean, email, phone, website,
+                niche, city, state, rating, reviews, website_issue, notes, status, priority_score)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'new', 0)""",
+            (data.business_name, clean, data.email or "", data.phone or "",
+             data.website or "", data.niche or "", data.city or "", data.state or "",
+             data.rating, data.reviews, data.website_issue or "", data.notes or ""),
+        )
+        lead_id = cur.lastrowid
+    db.close()
+    return {"ok": True, "id": lead_id}
+
+
+@router.delete("/dedup")
+async def dedup_emails():
+    db = get_db()
+    with db:
+        db.execute("""
+            DELETE FROM leads
+            WHERE email IS NOT NULL AND email != ''
+              AND id NOT IN (
+                SELECT MIN(id) FROM leads
+                WHERE email IS NOT NULL AND email != ''
+                GROUP BY LOWER(TRIM(email))
+              )
+        """)
+    removed = db.execute("SELECT changes()").fetchone()[0]
+    db.close()
+    return {"ok": True, "removed": removed}
+
+
 @router.patch("/{lead_id}")
 async def update_lead(lead_id: int, data: LeadUpdate):
     updates = {k: v for k, v in data.model_dump().items() if v is not None}

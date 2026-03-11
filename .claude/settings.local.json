@@ -10,7 +10,21 @@
       "Bash(cd C:/CS/EmailAutomation && python -c \"\nfrom main import app\nfrom fastapi.testclient import TestClient\nclient = TestClient\\(app\\)\nr = client.get\\('/api/leads?per_page=5'\\)\nd = r.json\\(\\)\nprint\\('Status:', r.status_code\\)\nprint\\('Total:', d['total']\\)\nprint\\('Sample:', d['leads'][0]['business_name_clean'], '|', d['leads'][0].get\\('email','no email'\\), '|', d['leads'][0]['website_issue']\\)\n\")",
       "Bash(cd C:/CS/EmailAutomation && python -c \"\nfrom main import app\nfrom fastapi.testclient import TestClient\nc = TestClient\\(app\\)\nr = c.get\\('/api/leads?has_email=true&per_page=5'\\)\nprint\\('has_email=true, total:', r.json\\(\\)['total']\\)\nwith open\\('static/index.html', encoding='utf-8'\\) as f:\n    html = f.read\\(\\)\nchecks = [\\\\\"tab === 'emails'\\\\\", 'async loadEmails\\(\\)', 'emailsTotal', 'emailLeads']\nfor ch in checks:\n    print\\(ch + ':', ch in html\\)\n\")",
       "Bash(cd C:/CS/EmailAutomation && python -c \"\nfrom main import app\nfrom fastapi.testclient import TestClient\nc = TestClient\\(app\\)\nr = c.get\\('/api/emails/stats'\\)\nprint\\(r.json\\(\\)\\)\n\")",
-      "Bash(cd C:/CS/EmailAutomation && python scrape_emails.py)"
+      "Bash(cd C:/CS/EmailAutomation && python scrape_emails.py)",
+      "Bash(cd C:/CS/EmailAutomation && rm nixpacks.toml)",
+      "Bash(cd C:/CS/EmailAutomation && python -c \"import google.generativeai; print\\('import OK'\\)\")",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(sleep 3 && curl -s http://localhost:8000/api/config)",
+      "Bash(netstat -ano | findstr :8000 | findstr LISTENING)",
+      "Bash(taskkill /PID 32708 /F && sleep 2 && cd C:/CS/EmailAutomation && python main.py)",
+      "Bash(sleep 4 && curl -s http://localhost:8000/api/leads/dedup -X DELETE)",
+      "Bash(taskkill /PID 32708 /F)",
+      "Bash(cmd /c \"taskkill /PID 32708 /F\")",
+      "Bash(cd C:/CS/EmailAutomation && python main.py)",
+      "Bash(cmd /c \"netstat -ano | findstr :8000 | findstr LISTENING\")",
+      "Bash(cmd /c \"netstat -ano | findstr :8000\")",
+      "Bash(sleep 3 && curl -s http://localhost:8000/api/leads -X POST -H \"Content-Type: application/json\" -d \"{\\\\\"business_name\\\\\":\\\\\"Test Co\\\\\",\\\\\"email\\\\\":\\\\\"test@test.com\\\\\",\\\\\"city\\\\\":\\\\\"Austin\\\\\",\\\\\"state\\\\\":\\\\\"TX\\\\\"}\")"
     ]
   }
 }
