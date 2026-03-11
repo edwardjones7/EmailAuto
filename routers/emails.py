@@ -102,18 +102,18 @@ async def enhance_with_ai(req: EnhanceRequest):
         raise HTTPException(404, "Lead not found")
 
     settings = {r["key"]: r["value"] for r in settings_rows}
-    api_key = settings.get("gemini_api_key")
+    api_key = settings.get("groq_api_key")
     if not api_key:
-        raise HTTPException(400, "Gemini API key not configured in Settings")
+        raise HTTPException(400, "Groq API key not configured in Settings")
 
     lead = dict(lead)
     from email_service import clean_business_name
 
     try:
         import json
-        from google import genai
+        from groq import Groq
 
-        client = genai.Client(api_key=api_key)
+        client = Groq(api_key=api_key)
 
         prompt = f"""You are writing a cold outreach email for a web development agency targeting local small businesses.
 
@@ -135,14 +135,13 @@ Preserve any HTML tags in the body.
 
 Return ONLY valid JSON: {{"subject": "...", "body": "..."}}"""
 
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-        text = response.text.strip()
-        # Strip markdown code fences if present
-        if text.startswith("```"):
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-        result = json.loads(text.strip())
+        chat = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+        )
+        text = chat.choices[0].message.content.strip()
+        result = json.loads(text)
         return result
     except Exception as e:
         raise HTTPException(500, f"AI enhancement failed: {str(e)}")
