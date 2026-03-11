@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+openpyxl
+python-dotenv
+anthropic

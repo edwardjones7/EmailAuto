@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EmailAuto — Lead Outreach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .lead-row:hover .row-actions { opacity: 1; }
+    .row-actions { opacity: 0; transition: opacity 0.15s; }
+    textarea, input, select { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased" x-data="app()" x-init="init()" x-cloak>
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+  <aside class="w-56 flex flex-col flex-shrink-0 bg-[#0f172a] select-none">
+
+    <!-- Logo -->
+    <div class="px-5 pt-6 pb-5">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        </div>
+        <span class="font-bold text-white tracking-tight text-[15px]">EmailAuto</span>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-1.5 leading-tight">Lead outreach for web dev</p>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-2 space-y-0.5 overflow-auto">
+      <template x-for="item in navItems" :key="item.id">
+        <button
+          @click="switchTab(item.id)"
+          :class="tab === item.id
+            ? 'bg-blue-600/20 text-blue-400 font-medium'
+            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'"
+          class="w-full text-left px-3 py-2 rounded-lg text-[13px] flex items-center gap-3 transition-all duration-100"
+        >
+          <span class="text-base leading-none w-4 text-center" x-text="item.icon"></span>
+          <span x-text="item.label"></span>
+          <!-- Badge counts -->
+          <span x-show="item.id === 'leads' && leadsTotal > 0"
+            class="ml-auto text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded-full"
+            x-text="leadsTotal > 999 ? '1k+' : leadsTotal"></span>
+          <span x-show="item.id === 'emails' && emailsTotal > 0"
+            class="ml-auto text-[10px] bg-emerald-900 text-emerald-400 px-1.5 py-0.5 rounded-full"
+            x-text="emailsTotal"></span>
+        </button>
+      </template>
+    </nav>
+
+    <!-- Selection panel -->
+    <div x-show="selected.length > 0" x-transition class="mx-2 mb-2 rounded-xl bg-blue-600 p-3">
+      <p class="text-xs font-semibold text-white" x-text="`${selected.length} selected`"></p>
+      <button @click="openCompose()"
+        class="mt-2 w-full bg-white text-blue-700 text-xs font-bold py-2 rounded-lg hover:bg-blue-50 transition flex items-center justify-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        Compose Email
+      </button>
+      <button @click="selected = []" class="mt-1.5 w-full text-blue-200 text-xs hover:text-white transition">
+        Clear selection
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-4 pb-4 pt-2 border-t border-white/5 space-y-1">
+      <p class="text-[11px] text-slate-500 font-medium">
+        <span class="text-emerald-400" x-text="(stats.with_email || 0).toLocaleString()"></span>
+        <span class="text-slate-600"> contacts</span>
+      </p>
+      <p class="text-[11px] text-slate-600">
+        <span x-text="(stats.total_sent_emails || 0).toLocaleString()"></span> sent ·
+        <span x-text="(stats.open_rate || 0) + '%'"></span> open rate
+      </p>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+  <main class="flex-1 overflow-hidden flex flex-col min-w-0">
+
+    <!-- ━━━━━━━━━━━━━━━━ DASHBOARD ━━━━━━━━━━━━━━━━ -->
+    <div x-show="tab === 'dashboard'" class="flex-1 overflow-auto p-6 space-y-5">
+
+      <!-- Header -->
+      <div class="flex items-end justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-slate-900">Email Outreach</h1>
+          <p class="text-sm text-slate-400 mt-0.5">All stats are based on contactable leads only</p>
+        </div>
+        <button @click="switchTab('emails')"
+          class="text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          View email list
+        </button>
+      </div>
+
+      <!-- Hero stat + KPIs -->
+      <div class="grid grid-cols-[1fr_1fr_1fr_1fr] gap-4">
+
+        <!-- Hero: total email contacts -->
+        <div class="col-span-1 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-md">
+          <p class="text-xs font-semibold uppercase tracking-widest text-emerald-100 mb-3">Email Contacts</p>
+          <p class="text-5xl font-extrabold leading-none" x-text="(stats.with_email || 0).toLocaleString()"></p>
+          <p class="text-sm text-emerald-200 mt-2">contactable leads</p>
+          <div class="mt-4 pt-4 border-t border-white/20 text-xs text-emerald-100 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            <span x-text="`${stats.with_email > 0 ? Math.round(stats.with_email / (stats.total||1) * 100) : 0}% of total database`"></span>
+          </div>
+        </div>
+
+        <!-- Sent -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col justify-between">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Emails Sent</p>
+            <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-sm">🚀</div>
+          </div>
+          <p class="text-3xl font-bold text-blue-600" x-text="(stats.total_sent_emails || 0).toLocaleString()"></p>
+          <p class="text-xs text-slate-400 mt-1"
+            x-text="stats.with_email > 0 ? `${Math.round((stats.total_sent_emails||0) / stats.with_email * 100)}% of contacts reached` : 'no contacts yet'"></p>
+        </div>
+
+        <!-- Opens -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col justify-between">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Opens</p>
+            <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-sm">📬</div>
+          </div>
+          <p class="text-3xl font-bold text-amber-600" x-text="(stats.total_opened_emails || 0).toLocaleString()"></p>
+          <p class="text-xs text-slate-400 mt-1"
+            x-text="stats.total_sent_emails > 0 ? `${stats.open_rate}% open rate` : 'no sends yet'"></p>
+        </div>
+
+        <!-- Replies + Converted -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col justify-between">
+          <div class="flex items-start justify-between mb-2">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Replies</p>
+            <div class="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center text-sm">💬</div>
+          </div>
+          <p class="text-3xl font-bold text-violet-600" x-text="(stats.replied || 0).toLocaleString()"></p>
+          <div class="mt-1 flex items-center gap-2">
+            <span class="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-medium"
+              x-text="`${stats.converted || 0} converted`"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Funnel + Niche emails -->
+      <div class="grid grid-cols-2 gap-4">
+
+        <!-- Email funnel -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <h3 class="text-sm font-semibold text-slate-700 mb-1">Email Funnel</h3>
+          <p class="text-xs text-slate-400 mb-4">Based on <span class="font-medium text-slate-600" x-text="(stats.with_email||0).toLocaleString()"></span> email contacts</p>
+          <div class="space-y-3">
+            <template x-for="stage in pipeline" :key="stage.label">
+              <div>
+                <div class="flex justify-between mb-1.5">
+                  <div class="flex items-center gap-2">
+                    <div :class="stage.dot" class="w-2 h-2 rounded-full"></div>
+                    <span class="text-xs text-slate-600" x-text="stage.label"></span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-800" x-text="stage.value.toLocaleString()"></span>
+                    <span class="text-[11px] text-slate-400 w-8 text-right"
+                      x-text="stats.with_email > 0 ? Math.round(stage.value / stats.with_email * 100) + '%' : '—'"></span>
+                  </div>
+                </div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div :class="stage.color" class="h-full rounded-full transition-all duration-700"
+                    :style="`width: ${stats.with_email > 0 ? Math.min(100, Math.round(stage.value / stats.with_email * 100)) : 0}%`"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Emails by niche -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <h3 class="text-sm font-semibold text-slate-700 mb-1">Contacts by Niche</h3>
+          <p class="text-xs text-slate-400 mb-4">Only niches with email addresses</p>
+          <div class="space-y-2.5">
+            <template x-for="n in (stats.by_niche || []).filter(n => n.with_email > 0).slice(0, 7)" :key="n.niche">
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-600 capitalize w-28 truncate flex-shrink-0" x-text="(n.niche||'').replace(/-/g,' ')"></span>
+                <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-emerald-400 rounded-full transition-all duration-700"
+                    :style="`width: ${Math.min(100, Math.round(n.with_email / Math.max(...(stats.by_niche||[]).map(x=>x.with_email||0), 1) * 100))}%`"></div>
+                </div>
+                <span class="text-xs font-semibold text-emerald-700 w-6 text-right flex-shrink-0" x-text="n.with_email"></span>
+              </div>
+            </template>
+            <div x-show="!(stats.by_niche||[]).some(n => n.with_email > 0)"
+              class="text-xs text-slate-400 py-4 text-center">No email contacts yet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Niche breakdown table — email-focused -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100">
+          <h3 class="text-sm font-semibold text-slate-700">Contacts by Niche</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Showing all niches · sorted by email contacts</p>
+        </div>
+        <div class="overflow-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-[11px] font-medium text-slate-400 uppercase tracking-wide bg-slate-50/60">
+                <th class="px-5 py-2.5 text-left">Niche</th>
+                <th class="px-5 py-2.5 text-right">Email Contacts</th>
+                <th class="px-5 py-2.5 text-right">Sent</th>
+                <th class="px-5 py-2.5 text-right">% Reached</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="n in (stats.by_niche || []).slice().sort((a,b) => (b.with_email||0) - (a.with_email||0))" :key="n.niche">
+                <tr class="border-t border-slate-50 hover:bg-slate-50/50">
+                  <td class="px-5 py-2.5 font-medium capitalize text-slate-700" x-text="(n.niche||'').replace(/-/g,' ')"></td>
+                  <td class="px-5 py-2.5 text-right">
+                    <span :class="n.with_email > 0 ? 'text-emerald-700 font-semibold' : 'text-slate-300'" x-text="n.with_email || 0"></span>
+                  </td>
+                  <td class="px-5 py-2.5 text-right text-blue-600" x-text="n.sent_count || 0"></td>
+                  <td class="px-5 py-2.5 text-right text-slate-400 text-xs"
+                    x-text="n.with_email > 0 ? Math.round((n.sent_count||0) / n.with_email * 100) + '%' : '—'"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ━━━━━━━━━━━━━━━━ LEADS ━━━━━━━━━━━━━━━━ -->
+    <div x-show="tab === 'leads'" class="flex flex-col h-full overflow-hidden">
+
+      <!-- Top bar -->
+      <div class="bg-white border-b border-slate-200 px-5 py-3 flex-shrink-0">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Search -->
+          <div class="relative">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input x-model="filters.search" @keydown.enter="applyFilters()"
+              placeholder="Search..."
+              class="pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm w-44 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+          </div>
+
+          <select x-model="filters.has_email" @change="applyFilters()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">All leads</option>
+            <option value="true">Has email</option>
+            <option value="false">No email</option>
+          </select>
+
+          <select x-model="filters.status" @change="applyFilters()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">All statuses</option>
+            <option value="new">New</option>
+            <option value="sent">Sent</option>
+            <option value="opened">Opened</option>
+            <option value="replied">Replied</option>
+            <option value="converted">Converted</option>
+            <option value="not_interested">Not Interested</option>
+          </select>
+
+          <select x-model="filters.niche" @change="applyFilters()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">All niches</option>
+            <template x-for="n in filterOptions.niches" :key="n">
+              <option :value="n" x-text="n.replace(/-/g,' ')"></option>
+            </template>
+          </select>
+
+          <select x-model="filters.website_issue_type" @change="applyFilters()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">Any issue</option>
+            <option value="no_website">No Website</option>
+            <option value="viewport">No Viewport</option>
+            <option value="thin">Thin Content</option>
+            <option value="error">HTTP Error</option>
+            <option value="unreachable">Unreachable</option>
+          </select>
+
+          <select x-model="filters.sort_by" @change="applyFilters()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="priority_score">Best first</option>
+            <option value="rating">Top rated</option>
+            <option value="reviews">Most reviews</option>
+            <option value="business_name_clean">Name A–Z</option>
+          </select>
+
+          <button @click="resetFilters()" class="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2">Reset</button>
+
+          <div class="ml-auto flex items-center gap-2">
+            <span class="text-xs text-slate-400">
+              <span class="font-semibold text-slate-600" x-text="leadsTotal.toLocaleString()"></span> leads
+            </span>
+            <button x-show="selected.length > 0" @click="openCompose()"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+              Email <span x-text="selected.length"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table header -->
+      <div class="bg-slate-50 border-b border-slate-200 flex-shrink-0">
+        <div class="grid grid-cols-[40px_2fr_1fr_1fr_70px_1.5fr_1.2fr_100px_60px] items-center px-4 py-2 text-[11px] font-medium text-slate-400 uppercase tracking-wide">
+          <div class="flex justify-center">
+            <input type="checkbox" :checked="isAllPageSelected()" @change="toggleSelectAll()"
+              class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 cursor-pointer" />
+          </div>
+          <div>Business</div>
+          <div>Location</div>
+          <div>Niche</div>
+          <div class="text-center">Rating</div>
+          <div>Email</div>
+          <div>Issue</div>
+          <div class="text-center">Status</div>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Lead rows -->
+      <div class="flex-1 overflow-auto bg-white">
+        <!-- Loading -->
+        <div x-show="leadsLoading" class="flex items-center justify-center h-32 gap-2 text-slate-400 text-sm">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          Loading leads...
+        </div>
+
+        <!-- Empty state -->
+        <div x-show="!leadsLoading && leads.length === 0" class="flex flex-col items-center justify-center h-48 text-slate-400">
+          <svg class="w-10 h-10 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <p class="text-sm font-medium">No leads match your filters</p>
+          <button @click="resetFilters()" class="mt-2 text-xs text-blue-500 hover:underline">Reset filters</button>
+        </div>
+
+        <!-- Rows -->
+        <template x-for="lead in leads" :key="lead.id">
+          <div class="lead-row grid grid-cols-[40px_2fr_1fr_1fr_70px_1.5fr_1.2fr_100px_60px] items-center px-4 py-2.5 border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-default"
+            :class="selected.includes(lead.id) ? 'bg-blue-50/60' : ''">
+
+            <!-- Checkbox -->
+            <div class="flex justify-center">
+              <input type="checkbox" :checked="selected.includes(lead.id)" @change="toggleSelect(lead.id)"
+                class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 cursor-pointer" />
+            </div>
+
+            <!-- Business -->
+            <div class="min-w-0 flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
+                :style="`background: ${avatarColor(lead.business_name_clean || lead.business_name)}`"
+                x-text="(lead.business_name_clean || lead.business_name || '?')[0].toUpperCase()">
+              </div>
+              <div class="min-w-0">
+                <p class="text-[13px] font-medium text-slate-800 truncate leading-snug" x-text="lead.business_name_clean || lead.business_name"></p>
+                <p class="text-[11px] text-slate-400 truncate leading-snug" x-text="lead.phone || ''"></p>
+              </div>
+            </div>
+
+            <!-- Location -->
+            <div class="text-[12px] text-slate-500 truncate" x-text="[lead.city, lead.state].filter(Boolean).join(', ')"></div>
+
+            <!-- Niche -->
+            <div>
+              <span x-show="lead.niche" class="inline-block text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md capitalize" x-text="(lead.niche||'').replace(/-/g,' ')"></span>
+            </div>
+
+            <!-- Rating -->
+            <div class="text-center">
+              <span x-show="lead.rating" class="text-[12px] font-semibold text-amber-500" x-text="lead.rating"></span>
+              <span x-show="lead.reviews" class="block text-[10px] text-slate-400" x-text="`(${lead.reviews})`"></span>
+            </div>
+
+            <!-- Email -->
+            <div class="min-w-0">
+              <template x-if="lead.email">
+                <div class="flex items-center gap-1.5">
+                  <svg class="w-3 h-3 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                  <span class="text-[12px] font-medium text-emerald-700 truncate" x-text="lead.email"></span>
+                </div>
+              </template>
+              <template x-if="!lead.email">
+                <button @click="openLeadDetail(lead)" class="text-[11px] text-slate-300 hover:text-blue-500 transition flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  Add email
+                </button>
+              </template>
+            </div>
+
+            <!-- Issue -->
+            <div>
+              <span x-show="lead.website_issue" :class="issueBadge(lead.website_issue)"
+                class="text-[11px] px-2 py-0.5 rounded-md font-medium whitespace-nowrap"
+                x-text="issueLabel(lead.website_issue)"></span>
+            </div>
+
+            <!-- Status -->
+            <div class="flex justify-center">
+              <span :class="statusBadge(lead.status)"
+                class="text-[11px] px-2.5 py-0.5 rounded-full font-medium capitalize"
+                x-text="lead.status"></span>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end row-actions">
+              <button @click="openLeadDetail(lead)"
+                class="text-[11px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-md transition font-medium">
+                Edit
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Pagination bar -->
+      <div class="bg-white border-t border-slate-200 px-5 py-2.5 flex items-center justify-between flex-shrink-0">
+        <span class="text-xs text-slate-400">
+          Showing <strong class="text-slate-600" x-text="((leadsPage - 1) * leadsPerPage + 1).toLocaleString()"></strong>
+          – <strong class="text-slate-600" x-text="Math.min(leadsPage * leadsPerPage, leadsTotal).toLocaleString()"></strong>
+          of <strong class="text-slate-600" x-text="leadsTotal.toLocaleString()"></strong>
+        </span>
+        <div class="flex items-center gap-1">
+          <button @click="prevPage()" :disabled="leadsPage <= 1"
+            class="px-3 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition">
+            ← Prev
+          </button>
+          <span class="px-2 text-xs text-slate-500">
+            <span x-text="leadsPage"></span> / <span x-text="totalPages()"></span>
+          </span>
+          <button @click="nextPage()" :disabled="leadsPage >= totalPages()"
+            class="px-3 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition">
+            Next →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ━━━━━━━━━━━━━━━━ EMAILS ━━━━━━━━━━━━━━━━ -->
+    <div x-show="tab === 'emails'" class="flex flex-col h-full overflow-hidden">
+
+      <!-- Top bar -->
+      <div class="bg-white border-b border-slate-200 px-5 py-3 flex-shrink-0">
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input x-model="emailsSearch" @input="emailsSearchDebounced()"
+              placeholder="Search name or email..."
+              class="pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm w-52 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"/>
+          </div>
+
+          <select x-model="emailsStatus" @change="loadEmails()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">All statuses</option>
+            <option value="new">New</option>
+            <option value="sent">Sent</option>
+            <option value="opened">Opened</option>
+            <option value="replied">Replied</option>
+            <option value="converted">Converted</option>
+            <option value="not_interested">Not Interested</option>
+          </select>
+
+          <select x-model="emailsNiche" @change="loadEmails()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <option value="">All niches</option>
+            <template x-for="n in filterOptions.niches" :key="n">
+              <option :value="n" x-text="n.replace(/-/g,' ')"></option>
+            </template>
+          </select>
+
+          <div class="ml-auto flex items-center gap-2">
+            <span class="text-xs text-slate-400">
+              <span class="font-semibold text-slate-600" x-text="emailsTotal.toLocaleString()"></span> contacts
+            </span>
+            <button x-show="selected.length > 0" @click="openCompose()"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+              Email <span x-text="selected.length"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="flex-1 overflow-auto bg-white">
+
+        <!-- Loading -->
+        <div x-show="emailsLoading" class="flex items-center justify-center h-32 gap-2 text-slate-400 text-sm">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          Loading...
+        </div>
+
+        <!-- Empty -->
+        <div x-show="!emailsLoading && emailLeads.length === 0" class="flex flex-col items-center justify-center h-64 text-slate-400">
+          <svg class="w-14 h-14 mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <p class="text-sm font-medium text-slate-500">No contacts with email addresses yet</p>
+          <p class="text-xs mt-1 text-slate-400">Open a lead in All Leads and add an email address to it</p>
+        </div>
+
+        <!-- Contact cards -->
+        <template x-for="lead in emailLeads" :key="lead.id">
+          <div class="lead-row flex items-center gap-4 px-5 py-3.5 border-b border-slate-100 hover:bg-blue-50/30 transition-colors"
+            :class="selected.includes(lead.id) ? 'bg-blue-50/50' : ''">
+
+            <!-- Checkbox -->
+            <input type="checkbox" :checked="selected.includes(lead.id)" @change="toggleSelect(lead.id)"
+              class="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer flex-shrink-0" />
+
+            <!-- Avatar -->
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+              :style="`background: ${avatarColor(lead.business_name_clean || lead.business_name)}`"
+              x-text="(lead.business_name_clean || lead.business_name || '?')[0].toUpperCase()">
+            </div>
+
+            <!-- Name + location -->
+            <div class="w-52 flex-shrink-0">
+              <p class="text-[13px] font-semibold text-slate-800 truncate leading-snug" x-text="lead.business_name_clean || lead.business_name"></p>
+              <p class="text-[11px] text-slate-400 truncate leading-snug" x-text="[lead.city, lead.state].filter(Boolean).join(', ')"></p>
+            </div>
+
+            <!-- Email — primary focus -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 w-fit max-w-full">
+                <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                <span class="text-[13px] font-medium text-emerald-800 truncate select-all" x-text="lead.email"></span>
+              </div>
+            </div>
+
+            <!-- Niche -->
+            <div class="w-28 flex-shrink-0 hidden lg:block">
+              <span x-show="lead.niche" class="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md capitalize" x-text="(lead.niche||'').replace(/-/g,' ')"></span>
+            </div>
+
+            <!-- Issue -->
+            <div class="w-28 flex-shrink-0 hidden xl:block">
+              <span x-show="lead.website_issue" :class="issueBadge(lead.website_issue)"
+                class="text-[11px] px-2 py-0.5 rounded-md font-medium"
+                x-text="issueLabel(lead.website_issue)"></span>
+            </div>
+
+            <!-- Status -->
+            <div class="w-24 flex-shrink-0 flex justify-center">
+              <span :class="statusBadge(lead.status)"
+                class="text-[11px] px-2.5 py-0.5 rounded-full font-medium capitalize"
+                x-text="lead.status"></span>
+            </div>
+
+            <!-- Times contacted -->
+            <div class="w-16 flex-shrink-0 text-center hidden md:block">
+              <span x-show="lead.times_contacted > 0"
+                class="text-[11px] text-slate-400"
+                x-text="`${lead.times_contacted}× sent`"></span>
+              <span x-show="lead.times_contacted === 0" class="text-[11px] text-slate-300">not sent</span>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-1.5 row-actions flex-shrink-0">
+              <button @click="openLeadDetail(lead)"
+                class="text-[11px] text-slate-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1 rounded-lg transition font-medium border border-transparent hover:border-blue-200">
+                Edit
+              </button>
+              <button @click="if(!selected.includes(lead.id)) toggleSelect(lead.id); openCompose()"
+                class="text-[11px] text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-2.5 py-1 rounded-lg transition font-medium border border-transparent hover:border-emerald-200"
+                title="Send this lead an email">
+                Send
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Pagination -->
+      <div class="bg-white border-t border-slate-200 px-5 py-2.5 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-400">
+            <span x-show="emailsTotal > 0">
+              Showing <strong class="text-slate-600" x-text="((emailsPage - 1) * emailsPerPage + 1)"></strong>
+              – <strong class="text-slate-600" x-text="Math.min(emailsPage * emailsPerPage, emailsTotal)"></strong>
+              of <strong class="text-slate-600" x-text="emailsTotal"></strong>
+            </span>
+            <span x-show="emailsTotal === 0">No results</span>
+          </span>
+          <span x-show="selected.length > 0" class="text-xs font-medium text-blue-600"
+            x-text="`${selected.length} selected`"></span>
+        </div>
+        <div class="flex items-center gap-1">
+          <button @click="prevEmailsPage()" :disabled="emailsPage <= 1"
+            class="px-3 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition">← Prev</button>
+          <span class="px-2 text-xs text-slate-500">
+            <span x-text="emailsPage"></span> / <span x-text="emailsTotalPages()"></span>
+          </span>
+          <button @click="nextEmailsPage()" :disabled="emailsPage >= emailsTotalPages()"
+            class="px-3 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ━━━━━━━━━━━━━━━━ TEMPLATES ━━━━━━━━━━━━━━━━ -->
+    <div x-show="tab === 'templates'" class="flex-1 overflow-auto p-6">
+      <div class="max-w-3xl">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-xl font-bold text-slate-900">Templates</h1>
+            <p class="text-sm text-slate-500 mt-0.5">Reusable email layouts with smart variables</p>
+          </div>
+          <button @click="openNewTemplate()"
+            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            New Template
+          </button>
+        </div>
+
+        <!-- Variable reference -->
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+          <p class="text-xs font-semibold text-blue-700 mb-2">Available Variables</p>
+          <div class="flex flex-wrap gap-1.5">
+            <template x-for="v in templateVars" :key="v">
+              <code class="text-[11px] bg-white border border-blue-200 text-blue-600 px-2 py-0.5 rounded-md font-mono" x-text="`{{${v}}}`"></code>
+            </template>
+          </div>
+        </div>
+
+        <div class="space-y-3" x-show="templates.length > 0">
+          <template x-for="tmpl in templates" :key="tmpl.id">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <h3 class="font-semibold text-slate-800" x-text="tmpl.name"></h3>
+                  </div>
+                  <p class="text-xs text-slate-500 mb-2">
+                    <span class="font-medium text-slate-600">Subject:</span>
+                    <span x-text="tmpl.subject"></span>
+                  </p>
+                  <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed" x-text="tmpl.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g,' ').trim()"></p>
+                </div>
+                <div class="flex gap-2 flex-shrink-0">
+                  <button @click="openEditTemplate(tmpl)"
+                    class="text-xs text-slate-500 hover:text-blue-600 border border-slate-200 hover:border-blue-200 px-3 py-1.5 rounded-lg transition">Edit</button>
+                  <button @click="deleteTemplate(tmpl.id)"
+                    class="text-xs text-slate-400 hover:text-red-500 border border-slate-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition">Delete</button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div x-show="templates.length === 0" class="text-center py-16 text-slate-400">
+          <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <p class="text-sm font-medium">No templates yet</p>
+          <button @click="openNewTemplate()" class="mt-2 text-blue-500 hover:underline text-sm">Create your first template</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ━━━━━━━━━━━━━━━━ SENT ━━━━━━━━━━━━━━━━ -->
+    <div x-show="tab === 'sent'" class="flex-1 overflow-auto p-6">
+      <div class="mb-6">
+        <h1 class="text-xl font-bold text-slate-900">Sent Emails</h1>
+        <p class="text-sm text-slate-500 mt-0.5" x-text="`${sentTotal.toLocaleString()} emails sent total`"></p>
+      </div>
+
+      <div x-show="sentEmails.length === 0 && !sentLoading" class="flex flex-col items-center justify-center py-20 text-slate-400">
+        <svg class="w-12 h-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        <p class="text-sm font-medium">No emails sent yet</p>
+        <p class="text-xs mt-1">Select leads and compose your first email</p>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" x-show="sentEmails.length > 0">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-[11px] font-medium text-slate-400 uppercase tracking-wide bg-slate-50/60 border-b border-slate-100">
+              <th class="px-5 py-3 text-left">Business</th>
+              <th class="px-5 py-3 text-left">Email</th>
+              <th class="px-5 py-3 text-left">Subject</th>
+              <th class="px-5 py-3 text-right">Sent</th>
+              <th class="px-5 py-3 text-center">Opens</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="e in sentEmails" :key="e.id">
+              <tr class="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
+                <td class="px-5 py-3 font-medium text-slate-700" x-text="e.business_name_clean"></td>
+                <td class="px-5 py-3 text-sm text-slate-500" x-text="e.email"></td>
+                <td class="px-5 py-3 text-slate-600 max-w-xs truncate text-xs" x-text="e.subject"></td>
+                <td class="px-5 py-3 text-right text-xs text-slate-400 whitespace-nowrap" x-text="formatDate(e.sent_at)"></td>
+                <td class="px-5 py-3 text-center">
+                  <span x-show="e.opened_count > 0"
+                    class="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    x-text="`${e.opened_count} open${e.opened_count > 1 ? 's' : ''}`"></span>
+                  <span x-show="e.opened_count === 0" class="text-slate-300 text-xs">—</span>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 flex justify-end gap-2" x-show="sentTotal > 50">
+        <button @click="prevSentPage()" :disabled="sentPage <= 1" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition">← Prev</button>
+        <button @click="nextSentPage()" :disabled="sentPage >= sentTotalPages()" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition">Next →</button>
+      </div>
+    </div>
+
+    <!-- ━━━━━━━━━━━━━━━━ SETTINGS ━━━━━━━━━━━━━━━━ -->
+    <div x-show="tab === 'settings'" class="flex-1 overflow-auto p-6">
+      <div class="max-w-lg">
+        <h1 class="text-xl font-bold text-slate-900 mb-1">Settings</h1>
+        <p class="text-sm text-slate-500 mb-6">Configure your email sending account</p>
+
+        <!-- SMTP card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-4">
+          <div class="flex items-center gap-2.5 mb-5">
+            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-800 text-sm">SMTP / Email Sending</h3>
+              <p class="text-xs text-slate-400">Namecheap PrivateMail defaults pre-filled</p>
+            </div>
+          </div>
+
+          <div class="space-y-3.5">
+            <template x-for="field in smtpFields" :key="field.key">
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1" x-text="field.label"></label>
+                <input x-model="settings[field.key]"
+                  :type="field.type || 'text'"
+                  :placeholder="field.placeholder"
+                  class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition" />
+              </div>
+            </template>
+          </div>
+
+          <div class="mt-4 flex items-center gap-3">
+            <button @click="testSmtp()" :disabled="smtpTesting"
+              class="text-sm border border-slate-200 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition flex items-center gap-2">
+              <svg x-show="smtpTesting" class="w-3.5 h-3.5 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <span x-text="smtpTesting ? 'Testing...' : 'Test Connection'"></span>
+            </button>
+            <span x-show="smtpTestResult"
+              :class="smtpTestResult?.ok ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'"
+              class="text-xs px-3 py-1.5 rounded-lg font-medium"
+              x-text="smtpTestResult?.message"></span>
+          </div>
+        </div>
+
+        <!-- AI card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-5">
+          <div class="flex items-center gap-2.5 mb-4">
+            <div class="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-sm">✨</div>
+            <div>
+              <h3 class="font-semibold text-slate-800 text-sm">AI Personalization</h3>
+              <p class="text-xs text-slate-400">One-click email rewriting via Claude</p>
+            </div>
+          </div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Anthropic API Key</label>
+          <input x-model="settings.anthropic_api_key" type="password" placeholder="sk-ant-..."
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 transition" />
+          <p class="text-xs text-slate-400 mt-2">Optional — used for the "Enhance with AI" button in the compose modal.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button @click="saveSettings()" :disabled="settingsSaving"
+            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg disabled:opacity-50 transition shadow-sm">
+            <span x-text="settingsSaving ? 'Saving...' : 'Save Settings'"></span>
+          </button>
+          <span x-show="settingsSaved" x-transition class="text-emerald-600 text-sm flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+            Saved
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════ COMPOSE MODAL ═══════════════════════════ -->
+<div x-show="composeOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+  class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+  @keydown.escape.window="composeOpen = false" @click.self="composeOpen = false">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col" @click.stop>
+
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="font-bold text-slate-900">Compose Email</h2>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Sending to
+          <span class="font-semibold text-blue-600" x-text="composeSelectedLeads.length"></span>
+          <span x-text="composeSelectedLeads.length === 1 ? ' lead' : ' leads'"></span>
+        </p>
+      </div>
+      <button @click="composeOpen = false" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition text-xl leading-none">×</button>
+    </div>
+
+    <!-- Body -->
+    <div class="flex-1 overflow-auto p-6 space-y-4">
+
+      <!-- Top controls -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Load Template</label>
+          <select x-model="composeSelectedTemplateId" @change="onTemplateChange()"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+            <option value="">— Select a template —</option>
+            <template x-for="t in templates" :key="t.id">
+              <option :value="t.id" x-text="t.name"></option>
+            </template>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Preview for lead</label>
+          <select x-model="composePreviewLeadId" @change="updatePreview()"
+            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+            <template x-for="l in composeSelectedLeads" :key="l.id">
+              <option :value="l.id" x-text="l.business_name_clean || l.business_name"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+
+      <!-- Subject -->
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Subject line</label>
+        <input x-model="composeSubject" @input="debouncedPreview()"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+          placeholder="e.g. Quick note about {{business_name}}" />
+      </div>
+
+      <!-- Edit / Preview tabs -->
+      <div class="border border-slate-200 rounded-xl overflow-hidden">
+        <div class="flex border-b border-slate-100 bg-slate-50">
+          <button @click="composeTab='edit'"
+            :class="composeTab==='edit' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'"
+            class="flex-1 py-2 text-xs font-medium transition rounded-tl-xl">
+            ✏️ Edit HTML
+          </button>
+          <button @click="composeTab='preview'; updatePreview()"
+            :class="composeTab==='preview' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'"
+            class="flex-1 py-2 text-xs font-medium transition rounded-tr-xl">
+            👁 Preview
+          </button>
+        </div>
+
+        <div x-show="composeTab === 'edit'" class="p-0">
+          <textarea x-model="composeBody" @input="debouncedPreview()" rows="11"
+            class="w-full px-4 py-3 text-xs text-slate-700 font-mono resize-none focus:outline-none border-0 rounded-b-xl"
+            placeholder="Enter HTML email body..."></textarea>
+        </div>
+
+        <div x-show="composeTab === 'preview'">
+          <div class="px-4 py-2 bg-slate-50 border-b border-slate-100 text-xs text-slate-500">
+            <span class="font-medium">To:</span> <span x-text="composeSelectedLeads.find(l => l.id == composePreviewLeadId)?.email || 'no email set'"></span>
+            <span class="mx-2 text-slate-300">|</span>
+            <span class="font-medium">Subject:</span> <span class="text-slate-700" x-text="composePreviewSubject || composeSubject"></span>
+          </div>
+          <iframe id="previewFrame" class="w-full h-64 rounded-b-xl" srcdoc="<p style='color:#94a3b8;padding:1.5rem;font-family:sans-serif;font-size:13px'>Click Preview to render email for selected lead...</p>"></iframe>
+        </div>
+      </div>
+
+      <!-- Send result -->
+      <div x-show="composeSendResult" class="rounded-xl border p-4 text-sm bg-slate-50">
+        <p x-show="composeSendResult?.sent?.length > 0" class="text-emerald-700 font-medium mb-1">
+          ✓ Sent to <span x-text="composeSendResult?.sent?.length"></span> leads successfully
+        </p>
+        <div x-show="composeSendResult?.failed?.length > 0">
+          <p class="text-red-600 font-medium mb-1" x-text="`✗ ${composeSendResult?.failed?.length} failed:`"></p>
+          <ul class="space-y-0.5">
+            <template x-for="f in (composeSendResult?.failed || [])">
+              <li class="text-xs text-red-500" x-text="`Lead #${f.id}: ${f.error}`"></li>
+            </template>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between flex-shrink-0 bg-slate-50 rounded-b-2xl">
+      <button @click="enhanceWithAI()" :disabled="composeEnhancing"
+        class="flex items-center gap-2 text-sm border border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 px-4 py-2 rounded-lg disabled:opacity-50 transition font-medium">
+        <span class="text-base" x-show="!composeEnhancing">✨</span>
+        <svg x-show="composeEnhancing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        <span x-text="composeEnhancing ? 'Enhancing...' : 'Enhance with AI'"></span>
+      </button>
+      <div class="flex items-center gap-2">
+        <button @click="composeOpen = false"
+          class="text-sm text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-100 transition">Cancel</button>
+        <button @click="sendBatch()" :disabled="composeSending || !composeSubject || !composeBody"
+          class="text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg disabled:opacity-40 transition shadow-sm flex items-center gap-2">
+          <svg x-show="composeSending" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          <span x-show="!composeSending">
+            Send to <span x-text="composeSelectedLeads.length"></span>
+            <span x-text="composeSelectedLeads.length === 1 ? 'lead' : 'leads'"></span>
+          </span>
+          <span x-show="composeSending">Sending...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ LEAD DETAIL MODAL ═══════════════════════════ -->
+<div x-show="leadDetailOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+  @keydown.escape.window="leadDetailOpen = false" @click.self="leadDetailOpen = false">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md" x-show="leadDetail" @click.stop>
+
+    <!-- Header -->
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+        :style="`background: ${avatarColor(leadDetail?.business_name_clean || leadDetail?.business_name || '')}`"
+        x-text="(leadDetail?.business_name_clean || leadDetail?.business_name || '?')[0]?.toUpperCase()"></div>
+      <div class="min-w-0">
+        <h2 class="font-bold text-slate-900 text-sm truncate" x-text="leadDetail?.business_name_clean || leadDetail?.business_name"></h2>
+        <p class="text-xs text-slate-400" x-text="[leadDetail?.city, leadDetail?.state].filter(Boolean).join(', ')"></p>
+      </div>
+      <button @click="leadDetailOpen = false" class="ml-auto w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 text-lg leading-none">×</button>
+    </div>
+
+    <div class="p-5 space-y-4">
+      <!-- Info grid -->
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="bg-slate-50 rounded-lg p-3">
+          <p class="text-slate-400 mb-0.5">Niche</p>
+          <p class="font-medium text-slate-700 capitalize" x-text="(leadDetail?.niche || 'Unknown').replace(/-/g,' ')"></p>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-3">
+          <p class="text-slate-400 mb-0.5">Rating</p>
+          <p class="font-medium text-slate-700" x-text="leadDetail?.rating ? `${leadDetail.rating} ⭐ (${leadDetail.reviews})` : '—'"></p>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-3 col-span-2">
+          <p class="text-slate-400 mb-0.5">Website Issue</p>
+          <p class="font-medium text-slate-700" x-text="leadDetail?.website_issue || '—'"></p>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1.5">Email Address</label>
+        <input x-model="leadDetail.email"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+          placeholder="email@domain.com" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1.5">Status</label>
+        <select x-model="leadDetail.status"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+          <option value="new">New</option>
+          <option value="sent">Sent</option>
+          <option value="opened">Opened</option>
+          <option value="replied">Replied</option>
+          <option value="converted">Converted</option>
+          <option value="not_interested">Not Interested</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1.5">Notes</label>
+        <textarea x-model="leadDetail.notes" rows="3"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+          placeholder="Internal notes..."></textarea>
+      </div>
+    </div>
+
+    <div class="px-5 py-4 border-t border-slate-100 flex justify-end gap-2">
+      <button @click="leadDetailOpen = false" class="text-sm text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition">Cancel</button>
+      <button @click="saveLeadDetail()" :disabled="leadDetailSaving"
+        class="text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 rounded-lg disabled:opacity-50 transition">
+        <span x-text="leadDetailSaving ? 'Saving...' : 'Save'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TEMPLATE MODAL ═══════════════════════════ -->
+<div x-show="templateModalOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+  class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+  @keydown.escape.window="templateModalOpen = false" @click.self="templateModalOpen = false">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" @click.stop>
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+      <h2 class="font-bold text-slate-900" x-text="templateForm.id ? 'Edit Template' : 'New Template'"></h2>
+      <button @click="templateModalOpen = false" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 text-xl">×</button>
+    </div>
+    <div class="flex-1 overflow-auto p-6 space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1.5">Template Name</label>
+        <input x-model="templateForm.name"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+          placeholder="e.g. Web Services Outreach v1" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1.5">Subject Line</label>
+        <input x-model="templateForm.subject"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1.5">Body (HTML)</label>
+        <textarea x-model="templateForm.body" rows="13"
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"></textarea>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-slate-100 flex justify-between items-center flex-shrink-0">
+      <p class="text-xs text-slate-400">Use <code class="bg-slate-100 px-1 rounded text-slate-600">{{`{{variable}}`}}</code> for personalization</p>
+      <div class="flex gap-2">
+        <button @click="templateModalOpen = false" class="text-sm text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition">Cancel</button>
+        <button @click="saveTemplate()" :disabled="templateSaving"
+          class="text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 rounded-lg disabled:opacity-50 transition">
+          <span x-text="templateSaving ? 'Saving...' : 'Save Template'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TOAST ═══════════════════════════ -->
+<div x-show="toast" x-transition:enter="transition ease-out duration-200 transform" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0"
+  class="fixed bottom-6 right-6 z-[100]">
+  <div :class="toast?.type === 'error' ? 'bg-red-600' : 'bg-slate-900'"
+    class="text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 max-w-xs">
+    <span x-show="toast?.type !== 'error'" class="text-base">✓</span>
+    <span x-show="toast?.type === 'error'" class="text-base">✕</span>
+    <span x-text="toast?.msg"></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ SCRIPT ═══════════════════════════ -->
+<script>
+const AVATAR_COLORS = [
+  '#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981',
+  '#06b6d4','#ef4444','#84cc16','#f97316','#6366f1',
+];
+
+function avatarColor(name) {
+  if (!name) return AVATAR_COLORS[0];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function app() {
+  return {
+    tab: 'dashboard',
+    navItems: [
+      { id: 'dashboard', icon: '◈', label: 'Dashboard' },
+      { id: 'leads',     icon: '⊞', label: 'All Leads' },
+      { id: 'emails',    icon: '✉', label: 'Emails' },
+      { id: 'templates', icon: '◧', label: 'Templates' },
+      { id: 'sent',      icon: '◉', label: 'Sent' },
+      { id: 'settings',  icon: '◎', label: 'Settings' },
+    ],
+    templateVars: ['business_name','owner_name','city','state','niche','website_issue','website','phone'],
+    smtpFields: [
+      { key: 'smtp_host',      label: 'SMTP Host',      placeholder: 'mail.privateemail.com' },
+      { key: 'smtp_port',      label: 'SMTP Port',      placeholder: '587' },
+      { key: 'smtp_username',  label: 'Username (your email)', placeholder: 'you@yourdomain.com' },
+      { key: 'smtp_password',  label: 'Password',       placeholder: '••••••••', type: 'password' },
+      { key: 'smtp_from_name', label: 'From Name',      placeholder: 'Your Name' },
+    ],
+
+    // Leads
+    leads: [], leadsTotal: 0, leadsPage: 1, leadsPerPage: 100, leadsLoading: false,
+    selected: [],
+    filterOptions: { niches: [], states: [] },
+    filters: {
+      has_email: '', status: '', niche: '', state_filter: '',
+      min_rating: '', min_reviews: '', search: '', website_issue_type: '',
+      sort_by: 'priority_score',
+    },
+
+    // Compose
+    composeOpen: false,
+    composeSubject: '', composeBody: '', composeTab: 'edit',
+    composeSelectedTemplateId: null,
+    composePreviewLeadId: null,
+    composePreviewSubject: '', composePreviewBody: '',
+    composeEnhancing: false, composeSending: false, composeSendResult: null,
+    composeSelectedLeads: [],
+    _previewTimer: null,
+
+    // Templates
+    templates: [], templateModalOpen: false,
+    templateForm: { id: null, name: '', subject: '', body: '' },
+    templateSaving: false,
+
+    // Emails tab
+    emailLeads: [], emailsTotal: 0, emailsPage: 1, emailsPerPage: 100, emailsLoading: false,
+    emailsSearch: '', emailsStatus: '', emailsNiche: '',
+    _emailsSearchTimer: null,
+
+    // Sent
+    sentEmails: [], sentTotal: 0, sentPage: 1, sentLoading: false,
+
+    // Stats
+    stats: {},
+    get pipeline() {
+      return [
+        { label: 'Sent',      value: this.stats.sent      || 0, color: 'bg-blue-500',   dot: 'bg-blue-400' },
+        { label: 'Opened',    value: this.stats.opened    || 0, color: 'bg-amber-400',  dot: 'bg-amber-400' },
+        { label: 'Replied',   value: this.stats.replied   || 0, color: 'bg-violet-500', dot: 'bg-violet-400' },
+        { label: 'Converted', value: this.stats.converted || 0, color: 'bg-emerald-500',dot: 'bg-emerald-400' },
+      ];
+    },
+
+    // Settings
+    settings: {}, settingsSaving: false, settingsSaved: false,
+    smtpTesting: false, smtpTestResult: null,
+
+    // Lead detail
+    leadDetailOpen: false, leadDetail: null, leadDetailSaving: false,
+
+    // Toast
+    toast: null, _toastTimer: null,
+
+    async init() {
+      await Promise.all([
+        this.loadStats(),
+        this.loadLeads(),
+        this.loadFilterOptions(),
+        this.loadTemplates(),
+        this.loadSettings(),
+      ]);
+    },
+
+    async switchTab(id) {
+      this.tab = id;
+      if (id === 'emails') await this.loadEmails();
+      if (id === 'sent' && this.sentEmails.length === 0) await this.loadSent();
+    },
+
+    showToast(msg, type = 'success') {
+      this.toast = { msg, type };
+      clearTimeout(this._toastTimer);
+      this._toastTimer = setTimeout(() => this.toast = null, 3500);
+    },
+
+    avatarColor(name) { return avatarColor(name); },
+
+    // Stats
+    async loadStats() {
+      const r = await fetch('/api/emails/stats');
+      this.stats = await r.json();
+    },
+
+    // Leads
+    async loadLeads() {
+      this.leadsLoading = true;
+      const p = new URLSearchParams({ page: this.leadsPage, per_page: this.leadsPerPage, sort_by: this.filters.sort_by });
+      if (this.filters.has_email !== '') p.set('has_email', this.filters.has_email);
+      if (this.filters.status) p.set('status', this.filters.status);
+      if (this.filters.niche) p.set('niche', this.filters.niche);
+      if (this.filters.min_rating) p.set('min_rating', this.filters.min_rating);
+      if (this.filters.search) p.set('search', this.filters.search);
+      if (this.filters.website_issue_type) p.set('website_issue_type', this.filters.website_issue_type);
+      const r = await fetch('/api/leads?' + p);
+      const d = await r.json();
+      this.leads = d.leads; this.leadsTotal = d.total;
+      this.leadsLoading = false;
+    },
+
+    async loadFilterOptions() {
+      const r = await fetch('/api/leads/filters');
+      this.filterOptions = await r.json();
+    },
+
+    applyFilters() { this.leadsPage = 1; this.loadLeads(); },
+    resetFilters() {
+      this.filters = { has_email: '', status: '', niche: '', state_filter: '', min_rating: '', min_reviews: '', search: '', website_issue_type: '', sort_by: 'priority_score' };
+      this.applyFilters();
+    },
+
+    toggleSelect(id) {
+      const i = this.selected.indexOf(id);
+      if (i === -1) this.selected.push(id); else this.selected.splice(i, 1);
+    },
+    toggleSelectAll() {
+      const ids = this.leads.map(l => l.id);
+      const all = ids.every(id => this.selected.includes(id));
+      if (all) this.selected = this.selected.filter(id => !ids.includes(id));
+      else ids.forEach(id => { if (!this.selected.includes(id)) this.selected.push(id); });
+    },
+    isAllPageSelected() {
+      const ids = this.leads.map(l => l.id);
+      return ids.length > 0 && ids.every(id => this.selected.includes(id));
+    },
+    totalPages() { return Math.max(1, Math.ceil(this.leadsTotal / this.leadsPerPage)); },
+    async prevPage() { if (this.leadsPage > 1) { this.leadsPage--; await this.loadLeads(); } },
+    async nextPage() { if (this.leadsPage < this.totalPages()) { this.leadsPage++; await this.loadLeads(); } },
+
+    async openLeadDetail(lead) { this.leadDetail = { ...lead }; this.leadDetailOpen = true; },
+    async saveLeadDetail() {
+      this.leadDetailSaving = true;
+      await fetch(`/api/leads/${this.leadDetail.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: this.leadDetail.status, notes: this.leadDetail.notes, email: this.leadDetail.email }),
+      });
+      this.leadDetailSaving = false;
+      this.leadDetailOpen = false;
+      // Refresh the right list
+      if (this.tab === 'emails') {
+        await this.loadEmails();
+      } else {
+        const idx = this.leads.findIndex(l => l.id === this.leadDetail.id);
+        if (idx !== -1) this.leads[idx] = { ...this.leads[idx], ...this.leadDetail };
+      }
+      await this.loadStats();
+      this.showToast('Lead updated');
+    },
+
+    // Compose
+    async openCompose() {
+      if (!this.selected.length) return;
+      this.composeSelectedLeads = this.leads.filter(l => this.selected.includes(l.id));
+      this.composePreviewLeadId = this.composeSelectedLeads[0]?.id || null;
+      this.composeSendResult = null;
+      this.composeTab = 'edit';
+      if (!this.composeSelectedTemplateId && this.templates.length > 0) {
+        this.composeSelectedTemplateId = this.templates[0].id;
+        this.loadTemplate(this.templates[0]);
+      }
+      this.composeOpen = true;
+    },
+
+    loadTemplate(tmpl) { this.composeSubject = tmpl.subject; this.composeBody = tmpl.body; },
+    onTemplateChange() {
+      const t = this.templates.find(t => t.id == this.composeSelectedTemplateId);
+      if (t) this.loadTemplate(t);
+    },
+
+    debouncedPreview() {
+      clearTimeout(this._previewTimer);
+      this._previewTimer = setTimeout(() => { if (this.composeTab === 'preview') this.updatePreview(); }, 400);
+    },
+
+    async updatePreview() {
+      if (!this.composePreviewLeadId || !this.composeSubject) return;
+      const r = await fetch(`/api/emails/preview?lead_id=${this.composePreviewLeadId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: this.composeSubject, body: this.composeBody }),
+      });
+      const d = await r.json();
+      this.composePreviewSubject = d.subject;
+      this.composePreviewBody = d.body;
+      const frame = document.getElementById('previewFrame');
+      if (frame) frame.srcdoc = d.body || '';
+    },
+
+    async enhanceWithAI() {
+      if (!this.composePreviewLeadId) { this.showToast('Select a preview lead first', 'error'); return; }
+      this.composeEnhancing = true;
+      try {
+        const r = await fetch('/api/emails/enhance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject: this.composeSubject, body: this.composeBody, lead_id: this.composePreviewLeadId }),
+        });
+        if (!r.ok) { const e = await r.json(); throw new Error(e.detail || 'Enhancement failed'); }
+        const d = await r.json();
+        this.composeSubject = d.subject; this.composeBody = d.body;
+        this.showToast('Email enhanced with AI ✨');
+      } catch (e) { this.showToast(e.message, 'error'); }
+      this.composeEnhancing = false;
+    },
+
+    async sendBatch() {
+      if (!confirm(`Send to ${this.selected.length} lead(s)?`)) return;
+      this.composeSending = true;
+      const r = await fetch('/api/emails/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_ids: this.selected, subject: this.composeSubject, body: this.composeBody }),
+      });
+      this.composeSendResult = await r.json();
+      this.composeSending = false;
+      if (this.composeSendResult.sent?.length > 0) {
+        this.showToast(`Sent to ${this.composeSendResult.sent.length} leads!`);
+        this.selected = [];
+        await Promise.all([this.loadLeads(), this.loadStats()]);
+      }
+      if (!this.composeSendResult.failed?.length) this.composeOpen = false;
+    },
+
+    // Templates
+    async loadTemplates() {
+      const r = await fetch('/api/templates');
+      this.templates = await r.json();
+    },
+    openNewTemplate() {
+      this.templateForm = {
+        id: null,
+        name: '',
+        subject: "Quick note about {{business_name}}'s website",
+        body: `<p>Hi {{owner_name}},</p>\n\n<p>I came across <strong>{{business_name}}</strong> in {{city}} and noticed your website has an issue: <em>{{website_issue}}</em>. For a {{niche}} with your reputation, that could be quietly costing you customers.</p>\n\n<p>We help local businesses fix these problems quickly and affordably — most projects done in under 2 weeks.</p>\n\n<p>Would you be open to a quick 10-minute chat?</p>\n\n<p>Best,<br>[Your Name]</p>`,
+      };
+      this.templateModalOpen = true;
+    },
+    openEditTemplate(tmpl) { this.templateForm = { ...tmpl }; this.templateModalOpen = true; },
+    async saveTemplate() {
+      this.templateSaving = true;
+      const { id, ...data } = this.templateForm;
+      await fetch(id ? `/api/templates/${id}` : '/api/templates', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      await this.loadTemplates();
+      this.templateModalOpen = false;
+      this.templateSaving = false;
+      this.showToast(id ? 'Template updated' : 'Template created');
+    },
+    async deleteTemplate(id) {
+      if (!confirm('Delete this template?')) return;
+      await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+      await this.loadTemplates();
+      this.showToast('Template deleted');
+    },
+
+    // Emails tab
+    async loadEmails() {
+      this.emailsLoading = true;
+      const p = new URLSearchParams({
+        has_email: 'true',
+        page: this.emailsPage,
+        per_page: this.emailsPerPage,
+        sort_by: 'priority_score',
+      });
+      if (this.emailsSearch) p.set('search', this.emailsSearch);
+      if (this.emailsStatus) p.set('status', this.emailsStatus);
+      if (this.emailsNiche) p.set('niche', this.emailsNiche);
+      const r = await fetch('/api/leads?' + p);
+      const d = await r.json();
+      this.emailLeads = d.leads;
+      this.emailsTotal = d.total;
+      this.emailsLoading = false;
+    },
+    emailsSearchDebounced() {
+      clearTimeout(this._emailsSearchTimer);
+      this._emailsSearchTimer = setTimeout(() => { this.emailsPage = 1; this.loadEmails(); }, 350);
+    },
+    emailsTotalPages() { return Math.max(1, Math.ceil(this.emailsTotal / this.emailsPerPage)); },
+    async prevEmailsPage() { if (this.emailsPage > 1) { this.emailsPage--; await this.loadEmails(); } },
+    async nextEmailsPage() { if (this.emailsPage < this.emailsTotalPages()) { this.emailsPage++; await this.loadEmails(); } },
+
+    // Sent
+    async loadSent() {
+      this.sentLoading = true;
+      const r = await fetch(`/api/emails/sent?page=${this.sentPage}&per_page=50`);
+      const d = await r.json();
+      this.sentEmails = d.sent; this.sentTotal = d.total;
+      this.sentLoading = false;
+    },
+    sentTotalPages() { return Math.max(1, Math.ceil(this.sentTotal / 50)); },
+    async prevSentPage() { if (this.sentPage > 1) { this.sentPage--; await this.loadSent(); } },
+    async nextSentPage() { if (this.sentPage < this.sentTotalPages()) { this.sentPage++; await this.loadSent(); } },
+
+    // Settings
+    async loadSettings() {
+      const r = await fetch('/api/settings');
+      const d = await r.json();
+      this.settings = {
+        smtp_host: 'mail.privateemail.com',
+        smtp_port: '587',
+        smtp_username: '', smtp_password: '', smtp_from_name: '',
+        anthropic_api_key: '',
+        ...d,
+      };
+    },
+    async saveSettings() {
+      this.settingsSaving = true;
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: this.settings }),
+      });
+      this.settingsSaving = false;
+      this.settingsSaved = true;
+      setTimeout(() => this.settingsSaved = false, 2500);
+    },
+    async testSmtp() {
+      this.smtpTesting = true; this.smtpTestResult = null;
+      await this.saveSettings();
+      const r = await fetch('/api/settings/test-smtp', { method: 'POST' });
+      this.smtpTestResult = await r.json();
+      this.smtpTesting = false;
+    },
+
+    // Helpers
+    issueLabel(issue) {
+      if (!issue) return '';
+      if (issue.includes('No website')) return 'No Website';
+      if (issue.includes('viewport')) return 'No Viewport';
+      if (issue.includes('thin') || issue.includes('Thin')) return 'Thin Content';
+      if (issue.includes('unreachable')) return 'Unreachable';
+      if (issue.includes('Social')) return 'Social Only';
+      const code = issue.match(/HTTP\s*(\d{3})/)?.[1];
+      if (code) return `HTTP ${code}`;
+      return issue.substring(0, 16);
+    },
+
+    issueBadge(issue) {
+      if (!issue) return '';
+      if (issue.includes('No website')) return 'bg-orange-100 text-orange-700';
+      if (issue.includes('viewport') || issue.includes('thin') || issue.includes('Thin')) return 'bg-yellow-100 text-yellow-700';
+      if (issue.includes('HTTP') || issue.includes('error')) return 'bg-red-100 text-red-600';
+      if (issue.includes('unreachable')) return 'bg-red-100 text-red-700';
+      if (issue.includes('Social')) return 'bg-slate-100 text-slate-500';
+      return 'bg-slate-100 text-slate-500';
+    },
+
+    statusBadge(status) {
+      return {
+        new:           'bg-slate-100 text-slate-500',
+        sent:          'bg-blue-100 text-blue-700',
+        opened:        'bg-emerald-100 text-emerald-700',
+        replied:       'bg-violet-100 text-violet-700',
+        converted:     'bg-amber-100 text-amber-700',
+        not_interested:'bg-red-100 text-red-600',
+      }[status] || 'bg-slate-100 text-slate-500';
+    },
+
+    formatDate(dt) {
+      if (!dt) return '—';
+      return new Date(dt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    },
+  };
+}
+</script>
+</body>
+</html>
